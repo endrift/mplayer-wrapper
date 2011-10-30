@@ -78,6 +78,13 @@ class RootWindow(object):
 	def _loadIconSmall(self, iconName):
 		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
 
+	def _enableScrubber(self):
+		self.scrubber.set_sensitive(True)
+
+	def _disableScrubber(self):
+		self.scrubber.set_sensitive(False)
+		self.scrubber.set_value(0)
+
 	def removeSelected(self):
 		self.playlist.removeSelected()
 
@@ -113,13 +120,16 @@ class RootWindow(object):
 	def update(self):
 		if self.player:
 			if self.player.ended():
+				self._disableScrubber()
 				self.player = None
 				return False
 
 			try:
+				self._enableScrubber()
 				self.scrubber.set_range(0, self.player.getDuration())
 				self.scrubber.set_value(self.player.getTime())
 			except:
+				self._disableScrubber()
 				return not self.player.ended()
 
 			return True
@@ -160,6 +170,7 @@ class RootWindow(object):
 	def stop(self, widget=None):
 		if self.player:
 			self.player.quit()
+			self._disableScrubber()
 			self.player = None
 			pass
 
