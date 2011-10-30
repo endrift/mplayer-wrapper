@@ -186,31 +186,55 @@ class LocalFile(object):
 	def uri(self):
 		return self.filename
 
+	def type(self):
+		return 'File'
+
+	def name(self):
+		return self.filename
+
 class YouTubeMovie(object):
 	def __init__(self, url):
-		self.url = url
-		self.title = url
+		if url.startswith('http://'):
+			self.url = url
+		else:
+			self.url = 'http://www.youtube.com/watch?v={}'.format(url)
+		self.download = subprocess.check_output(['youtube-dl', '-g', self.url])
+		self.title = subprocess.check_output(['youtube-dl', '-e', self.url]).rstrip()
 
 	def __repr__(self):
-		return 'YouTube: {}'.format(self.title)
+		return 'YouTube: {}'.format(self.url)
 
 	def uri(self):
-		return subprocess.check_output(['youtube-dl', '-g', self.url])
+		return self.download
+
+	def type(self):
+		return 'YouTube'
+
+	def name(self):
+		return self.title
 
 class PlaylistWidget(object):
 	def __init__(self):
-		def format_data(col, cell, model, iter):
+		def format_name(col, cell, model, iter):
 			obj = model.get_value(iter, 0)
-			cell.set_property('text', repr(obj))
+			cell.set_property('text', obj.name())
+
+		def format_type(col, cell, model, iter):
+			obj = model.get_value(iter, 0)
+			cell.set_property('text', obj.type())
 
 		self.listStore = gtk.ListStore(object)
 		nameText = gtk.CellRendererText()
 		nameCol = gtk.TreeViewColumn('Name', nameText)
-		nameCol.set_cell_data_func(nameText, format_data)
+		nameCol.set_cell_data_func(nameText, format_name)
+		typeText = gtk.CellRendererText()
+		typeCol = gtk.TreeViewColumn('Type', typeText)
+		typeCol.set_cell_data_func(typeText, format_type)
 		self.widget = gtk.TreeView(self.listStore)
 		self.widget.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
 		self.widget.set_reorderable(True)
 		self.widget.append_column(nameCol)
+		self.widget.append_column(typeCol)
 
 	def addItem(self, item):
 		self.listStore.append([item])
