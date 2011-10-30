@@ -38,7 +38,9 @@ class RootWindow(object):
 		hbox.pack_start(player)
 
 		self.playlist = PlaylistWidget()
-		player.pack_start(self.playlist.widget)
+		scroller = gtk.ScrolledWindow()
+		scroller.add(self.playlist.widget)
+		player.pack_start(scroller)
 
 		self.scrubber = gtk.HScale()
 		self.scrubber.set_draw_value(False)
