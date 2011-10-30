@@ -1,5 +1,5 @@
-#!/usr/bin/env python2
-from gi.repository import Gtk
+#!/usr/bin/env python
+from gi.repository import Gtk, GObject
 import signal
 import subprocess
 
@@ -128,7 +128,7 @@ class RootWindow(object):
 		p = self.playlist.compile()
 		if p:
 			self.player = p.play()
-			self.timer = gobject.timeout_add(500, self.update)
+			self.timer = GObject.timeout_add(500, self.update)
 		else:
 			error = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, None)
 			error.set_markup('Cannot play empty playlist!')
