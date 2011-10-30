@@ -207,12 +207,12 @@ class YouTubeMovie(object):
 		if url.startswith('http://'):
 			self.url = url
 		else:
-			self.url = 'http://www.youtube.com/watch?v={}'.format(url)
+			self.url = 'http://www.youtube.com/watch?v={0}'.format(url)
 		self.download = subprocess.check_output(['youtube-dl', '-g', self.url])
 		self.title = subprocess.check_output(['youtube-dl', '-e', self.url]).rstrip()
 
 	def __repr__(self):
-		return 'YouTube: {}'.format(self.url)
+		return 'YouTube: {0}'.format(self.url)
 
 	def uri(self):
 		return self.download
@@ -319,7 +319,7 @@ class Control(object):
 		return not self.proc or self.proc.poll() is not None
 
 	def seek(self, delta):
-		self._write('seek {}'.format('+{}'.format(delta) if delta >= 0 else '{}'.format(delta)))
+		self._write('seek {0}'.format('+{0}'.format(delta) if delta >= 0 else '{0}'.format(delta)))
 
 	def next(self):
 		self._write('pt_step +1')
@@ -356,7 +356,7 @@ class Control(object):
 			return False
 
 	def seek(self, value):
-		self._write('seek {} 2'.format(value))
+		self._write('seek {0} 2'.format(value))
 
 	def getTrack(self):
 		pass
