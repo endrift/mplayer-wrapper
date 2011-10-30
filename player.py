@@ -1,82 +1,76 @@
 #!/usr/bin/env python2
-import pygtk
-pygtk.require('2.0')
-import gtk
-import gobject
-
-import os
-import select
+from gi.repository import Gtk
 import signal
 import subprocess
 
 class RootWindow(object):
 	def  __init__(self):
-		self.icons = gtk.icon_theme_get_default()
+		self.icons = Gtk.IconTheme.get_default()
 		self.player = None
 
-		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+		self.window = Gtk.Window()
 		self.window.connect('delete_event', self.quit)
 		self.window.set_title('Media Player')
 		self.window.set_default_size(600, 300)
-		hbox = gtk.HBox()
+		hbox = Gtk.HBox()
 		self.window.add(hbox)
-		controls = gtk.VBox()
+		controls = Gtk.VBox()
 		hbox.pack_start(controls, False, False, 0)
-		extButton = gtk.Button('External Drive')
+		extButton = Gtk.Button('External Drive')
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
-		ytButton = gtk.Button('YouTube Video')
+		ytButton = Gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
-		remoteButton = gtk.Button('Remote Filesystem')
-		removeButton = gtk.Button('Remove Selected')
+		remoteButton = Gtk.Button('Remote Filesystem')
+		removeButton = Gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
-		controls.pack_start(extButton)
-		controls.pack_start(ytButton)
-		controls.pack_start(remoteButton)
-		controls.pack_start(removeButton)
+		controls.pack_start(extButton, False, False, 0)
+		controls.pack_start(ytButton, False, False, 0)
+		controls.pack_start(remoteButton, False, False, 0)
+		controls.pack_start(removeButton, False, False, 0)
 
-		player = gtk.VBox()
-		hbox.pack_start(player)
+		player = Gtk.VBox()
+		hbox.pack_start(player, True, True, 0)
 
 		self.playlist = PlaylistWidget()
-		scroller = gtk.ScrolledWindow()
+		scroller = Gtk.ScrolledWindow()
 		scroller.add(self.playlist.widget)
-		player.pack_start(scroller)
+		player.pack_start(scroller, True, True, 0)
 
-		self.scrubber = gtk.HScale()
+		self.scrubber = Gtk.HScale()
 		self.scrubber.set_draw_value(False)
 		self.scrubber.connect('adjust-bounds', lambda w, v: self.seek(v))
 		player.pack_end(self.scrubber, False, False, 0)
 
-		playButton = gtk.Button();
+		playButton = Gtk.Button();
 		playButton.add(self._loadIcon('player_play'))
 		playButton.connect('clicked', self.play)
-		pauseButton = gtk.Button()
+		pauseButton = Gtk.Button()
 		pauseButton.add(self._loadIcon('player_pause'))
 		pauseButton.connect('clicked', self.pause)
-		stopButton = gtk.Button()
+		stopButton = Gtk.Button()
 		stopButton.add(self._loadIcon('player_stop'))
 		stopButton.connect('clicked', self.stop)
-		controls.pack_start(playButton)
-		controls.pack_start(pauseButton)
-		controls.pack_start(stopButton)
+		controls.pack_start(playButton, False, False, 0)
+		controls.pack_start(pauseButton, False, False, 0)
+		controls.pack_start(stopButton, False, False, 0)
 
-		prevButton = gtk.Button()
+		prevButton = Gtk.Button()
 		prevButton.add(self._loadIconSmall('player_rew'))
 		prevButton.connect('clicked', self.prev)
-		nextButton = gtk.Button()
+		nextButton = Gtk.Button()
 		nextButton.add(self._loadIconSmall('player_fwd'))
 		nextButton.connect('clicked', self.next)
-		skipBox = gtk.HBox()
-		skipBox.pack_start(prevButton)
-		skipBox.pack_start(nextButton)
-		controls.pack_start(skipBox)
+		skipBox = Gtk.HBox()
+		skipBox.pack_start(prevButton, True, True, 0)
+		skipBox.pack_start(nextButton, True, True, 0)
+		controls.pack_start(skipBox, True, True, 0)
 		self.window.show_all()
 
 	def _loadIcon(self, iconName):
-		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
+		return Gtk.Image.new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
 
 	def _loadIconSmall(self, iconName):
-		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
+		return Gtk.Image.new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
 
 	def removeSelected(self):
 		self.playlist.removeSelected()
@@ -85,25 +79,25 @@ class RootWindow(object):
 		pass
 
 	def selectFile(self, root):
-		f = gtk.FileChooserDialog('Select File', None, gtk.FILE_CHOOSER_ACTION_OPEN, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK))
-		f.set_default_response(gtk.RESPONSE_CANCEL)
+		f = Gtk.FileChooserDialog('Select File', None, Gtk.FileChooserAction.OPEN, (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+		f.set_default_response(Gtk.ResponseType.CANCEL)
 		f.set_select_multiple(True)
 		f.set_current_folder(root)
 		response = f.run()
-		if response == gtk.RESPONSE_OK:
+		if response == Gtk.ResponseType.OK:
 			self.playlist.addItems([LocalFile(name) for name in f.get_filenames()])
 		f.destroy()
 
 	def selectYouTube(self):
-		ytWindow = gtk.MessageDialog(None, 0, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, None)
+		ytWindow = Gtk.MessageDialog(None, 0, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK_CANCEL, None)
 		ytWindow.set_markup('Enter URL')
 		ytWindow.connect('delete_event', lambda w,d: w.destroy())
-		ytWindow.set_default_response(gtk.RESPONSE_CANCEL)
-		inputBox = gtk.Entry()
-		ytWindow.vbox.pack_start(inputBox)
+		ytWindow.set_default_response(Gtk.ResponseType.CANCEL)
+		inputBox = Gtk.Entry()
+		ytWindow.vbox.pack_start(inputBox, False, False, 0)
 		ytWindow.show_all()
 		response = ytWindow.run()
-		if response == gtk.RESPONSE_OK:
+		if response == Gtk.ResponseType.OK:
 			try:
 				self.playlist.addItem(YouTubeMovie(inputBox.get_text()))
 			except:
@@ -136,7 +130,7 @@ class RootWindow(object):
 			self.player = p.play()
 			self.timer = gobject.timeout_add(500, self.update)
 		else:
-			error = gtk.MessageDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, None)
+			error = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, None)
 			error.set_markup('Cannot play empty playlist!')
 			error.run()
 			error.destroy()
@@ -172,7 +166,7 @@ class RootWindow(object):
 			self.player.prev()
 
 	def quit(self, widget, event, data=None):
-		gtk.main_quit()
+		Gtk.main_quit()
 		return False
 
 class LocalFile(object):
@@ -214,23 +208,23 @@ class YouTubeMovie(object):
 
 class PlaylistWidget(object):
 	def __init__(self):
-		def format_name(col, cell, model, iter):
+		def format_name(col, cell, model, iter, func_data):
 			obj = model.get_value(iter, 0)
 			cell.set_property('text', obj.name())
 
-		def format_type(col, cell, model, iter):
+		def format_type(col, cell, model, iter, func_data):
 			obj = model.get_value(iter, 0)
 			cell.set_property('text', obj.type())
 
-		self.listStore = gtk.ListStore(object)
-		nameText = gtk.CellRendererText()
-		nameCol = gtk.TreeViewColumn('Name', nameText)
+		self.listStore = Gtk.ListStore(object)
+		nameText = Gtk.CellRendererText()
+		nameCol = Gtk.TreeViewColumn('Name', nameText)
 		nameCol.set_cell_data_func(nameText, format_name)
-		typeText = gtk.CellRendererText()
-		typeCol = gtk.TreeViewColumn('Type', typeText)
+		typeText = Gtk.CellRendererText()
+		typeCol = Gtk.TreeViewColumn('Type', typeText)
 		typeCol.set_cell_data_func(typeText, format_type)
-		self.widget = gtk.TreeView(self.listStore)
-		self.widget.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+		self.widget = Gtk.TreeView(self.listStore)
+		self.widget.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 		self.widget.set_reorderable(True)
 		self.widget.append_column(nameCol)
 		self.widget.append_column(typeCol)
@@ -250,7 +244,7 @@ class PlaylistWidget(object):
 			model.remove(i)
 
 	def compile(self):
-		if not self.listStore.get_iter_root():
+		if not self.listStore.get_iter_first():
 			return None
 		playlist = Playlist()
 		self.listStore.foreach(lambda model, path, iter, user_data: playlist.items.append(model.get_value(iter, 0).uri()), None)
@@ -368,7 +362,7 @@ class Playlist(object):
 
 def main():
 	RootWindow()
-	gtk.main()
+	Gtk.main()
 
 if  __name__ == '__main__':
 	main()
