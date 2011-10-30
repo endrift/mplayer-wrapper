@@ -28,6 +28,7 @@ class RootWindow(object):
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
 		remoteButton = gtk.Button('Remote Filesystem')
 		removeButton = gtk.Button('Remove Selected')
+		removeButton.connect('clicked', lambda w: self.removeSelected())
 		controls.pack_start(extButton)
 		controls.pack_start(ytButton)
 		controls.pack_start(remoteButton)
@@ -74,6 +75,9 @@ class RootWindow(object):
 
 	def _loadIconSmall(self, iconName):
 		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
+
+	def removeSelected(self):
+		self.playlist.removeSelected()
 
 	def selectDrive(self):
 		pass
@@ -202,6 +206,8 @@ class PlaylistWidget(object):
 		nameCol = gtk.TreeViewColumn('Name', nameText)
 		nameCol.set_cell_data_func(nameText, format_data)
 		self.widget = gtk.TreeView(self.listStore)
+		self.widget.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+		self.widget.set_reorderable(True)
 		self.widget.append_column(nameCol)
 
 	def addItem(self, item):
@@ -210,6 +216,13 @@ class PlaylistWidget(object):
 	def addItems(self, items):
 		for item in items:
 			self.addItem(item)
+
+	def removeSelected(self):
+		selected = self.widget.get_selection()
+		model, rows = selected.get_selected_rows()
+		iters = [model.get_iter(row) for row in rows]
+		for i in iters:
+			model.remove(i)
 
 	def compile(self):
 		if not self.listStore.get_iter_root():
