@@ -55,10 +55,24 @@ class RootWindow(object):
 		controls.pack_start(playButton)
 		controls.pack_start(pauseButton)
 		controls.pack_start(stopButton)
+
+		prevButton = gtk.Button()
+		prevButton.add(self._loadIconSmall('player_rew'))
+		prevButton.connect('clicked', self.prev)
+		nextButton = gtk.Button()
+		nextButton.add(self._loadIconSmall('player_fwd'))
+		nextButton.connect('clicked', self.next)
+		skipBox = gtk.HBox()
+		skipBox.pack_start(prevButton)
+		skipBox.pack_start(nextButton)
+		controls.pack_start(skipBox)
 		self.window.show_all()
 
 	def _loadIcon(self, iconName):
 		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
+
+	def _loadIconSmall(self, iconName):
+		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
 
 	def selectDrive(self):
 		pass
@@ -129,6 +143,14 @@ class RootWindow(object):
 			self.player.quit()
 			self.player = None
 			pass
+
+	def next(self, widget):
+		if self.player:
+			self.player.next()
+
+	def prev(self, widget):
+		if self.player:
+			self.player.prev()
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
@@ -237,10 +259,10 @@ class Control(object):
 		self._write('seek {}'.format('+{}'.format(delta) if delta >= 0 else '{}'.format(delta)))
 
 	def next(self):
-		self._write('seek_chapter +1')
+		self._write('pt_step +1')
 
 	def prev(self):
-		self._write('seek_chapter -1')
+		self._write('pt_step -1')
 
 	def togglePause(self):
 		self._write('pause')
