@@ -100,7 +100,7 @@ class RootWindow(object):
 				self.scrubber.set_value(self.player.getTime())
 			except:
 				return not self.player.ended()
-	
+
 			return True
 		return False
 
@@ -119,7 +119,7 @@ class RootWindow(object):
 			error.set_markup('Cannot play empty playlist!')
 			error.run()
 			error.destroy()
-	
+
 	def pause(self, widget):
 		if self.player:
 			self.player.togglePause()
@@ -128,6 +128,7 @@ class RootWindow(object):
 		if self.player:
 			self.player.quit()
 			self.player = None
+			pass
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
@@ -193,6 +194,7 @@ class Control(object):
 	def quit(self):
 		try:
 			self.proc.terminate()
+			self.proc = None
 		except:
 			pass
 		try:
@@ -203,6 +205,8 @@ class Control(object):
 		self.fifo.close()
 
 	def _write(self, command):
+		if self.ended():
+			return
 		self.fifo.write(command)
 		self.fifo.write('\n')
 		self.fifo.flush()
@@ -210,22 +214,24 @@ class Control(object):
 	def _expect(self, answer, timeout=0):
 		def onTimeout():
 			raise RuntimeError('Timed out')
-	
+
 		self.fifo.flush()
 		signal.signal(signal.SIGALRM, lambda no, fr: onTimeout())
 		if timeout:
 			signal.alarm(timeout)
 		while True:
 			if self.ended():
+				signal.alarm(0)
 				return None
 			line = self.proc.stdout.readline().rstrip()
 			command = line.split('=', 1)
 			if command[0] != answer:
 				continue
+			signal.alarm(0)
 			return command[1]
 
 	def ended(self):
-		return self.proc.poll() is not None
+		return not self.proc or self.proc.poll() is not None
 
 	def seek(self, delta):
 		self._write('seek {}'.format('+{}'.format(delta) if delta >= 0 else '{}'.format(delta)))
