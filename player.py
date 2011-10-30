@@ -6,37 +6,59 @@ import gobject
 
 import os
 import select
+import signal
 import subprocess
 
 class RootWindow(object):
 	def  __init__(self):
+		self.icons = gtk.icon_theme_get_default()
+		self.player = None
+
 		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
 		self.window.connect('delete_event', self.quit)
 		self.window.set_title('Media Player')
-		table = gtk.Table(2, 2, False)
-		self.window.add(table)
+		self.window.set_default_size(600, 300)
+		hbox = gtk.HBox()
+		self.window.add(hbox)
+		controls = gtk.VBox()
+		hbox.pack_start(controls, False, False, 0)
 		extButton = gtk.Button('External Drive')
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
 		ytButton = gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
 		remoteButton = gtk.Button('Remote Filesystem')
-		frameBox = gtk.VBox(True, 0)
-		frameBox.pack_start(extButton)
-		frameBox.pack_start(ytButton)
-		frameBox.pack_start(remoteButton)
-		table.attach(frameBox, 0, 1, 0, 1)
-		self.playlist = PlaylistWidget()
-		table.attach(self.playlist.widget, 1, 2, 0, 2)
+		removeButton = gtk.Button('Remove Selected')
+		controls.pack_start(extButton)
+		controls.pack_start(ytButton)
+		controls.pack_start(remoteButton)
+		controls.pack_start(removeButton)
 
-		controlPad = gtk.Table(1, 1, False)
-		table.attach(controlPad, 0, 1, 1, 2)
+		player = gtk.VBox()
+		hbox.pack_start(player)
+
+		self.playlist = PlaylistWidget()
+		player.pack_start(self.playlist.widget)
+
+		self.scrubber = gtk.HScale()
+		self.scrubber.set_draw_value(False)
+		player.pack_end(self.scrubber, False, False, 0)
+
 		playButton = gtk.Button();
-		playArrow = gtk.Arrow(gtk.ARROW_RIGHT, gtk.SHADOW_ETCHED_IN)
-		playButton.add(playArrow)
-		playButton.set_border_width(0)
+		playButton.add(self._loadIcon('player_play'))
 		playButton.connect('clicked', self.play)
-		controlPad.attach(playButton, 0, 1, 0, 1)
+		pauseButton = gtk.Button()
+		pauseButton.add(self._loadIcon('player_pause'))
+		pauseButton.connect('clicked', self.pause)
+		stopButton = gtk.Button()
+		stopButton.add(self._loadIcon('player_stop'))
+		stopButton.connect('clicked', self.stop)
+		controls.pack_start(playButton)
+		controls.pack_start(pauseButton)
+		controls.pack_start(stopButton)
 		self.window.show_all()
+
+	def _loadIcon(self, iconName):
+		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
 
 	def selectDrive(self):
 		pass
@@ -67,15 +89,45 @@ class RootWindow(object):
 				pass
 		ytWindow.destroy()
 
+	def update(self):
+		if self.player:
+			if self.player.ended():
+				self.player = None
+				return False
+
+			try:
+				self.scrubber.set_range(0, self.player.getDuration())
+				self.scrubber.set_value(self.player.getTime())
+			except:
+				return not self.player.ended()
+	
+			return True
+		return False
+
 	def play(self, widget):
+		if self.player and not self.player.ended():
+			if self.player.paused():
+				self.player.togglePause()
+			return
+
 		p = self.playlist.compile()
 		if p:
-			p.play()
+			self.player = p.play()
+			self.timer = gobject.timeout_add(500, self.update)
 		else:
 			error = gtk.MessageDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, None)
 			error.set_markup('Cannot play empty playlist!')
 			error.run()
 			error.destroy()
+	
+	def pause(self, widget):
+		if self.player:
+			self.player.togglePause()
+
+	def stop(self, widget):
+		if self.player:
+			self.player.quit()
+			self.player = None
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
@@ -114,11 +166,9 @@ class PlaylistWidget(object):
 		nameCol.set_cell_data_func(nameText, format_data)
 		self.widget = gtk.TreeView(self.listStore)
 		self.widget.append_column(nameCol)
-		self.widget.set_size_request(400, 300)
 
 	def addItem(self, item):
 		self.listStore.append([item])
-		# TODO add to widget
 
 	def addItems(self, items):
 		for item in items:
@@ -138,13 +188,35 @@ class Control(object):
 		self.proc = proc
 
 	def __del__(self):
-		os.remove(self.file)
+		self.quit()
+
+	def quit(self):
+		try:
+			self.proc.terminate()
+		except:
+			pass
+		try:
+			os.remove(self.file)
+		except:
+			pass
+
 		self.fifo.close()
 
-	def _expect(self, answer):
+	def _write(self, command):
+		self.fifo.write(command)
+		self.fifo.write('\n')
 		self.fifo.flush()
+
+	def _expect(self, answer, timeout=0):
+		def onTimeout():
+			raise RuntimeError('Timed out')
+	
+		self.fifo.flush()
+		signal.signal(signal.SIGALRM, lambda no, fr: onTimeout())
+		if timeout:
+			signal.alarm(timeout)
 		while True:
-			if self.proc.poll() is not None:
+			if self.ended():
 				return None
 			line = self.proc.stdout.readline().rstrip()
 			command = line.split('=', 1)
@@ -152,21 +224,41 @@ class Control(object):
 				continue
 			return command[1]
 
+	def ended(self):
+		return self.proc.poll() is not None
+
 	def seek(self, delta):
-		self.fifo.write('seek {}\n'.format('+{}'.format(delta) if delta >= 0 else '{}'.format(delta)))
+		self._write('seek {}'.format('+{}'.format(delta) if delta >= 0 else '{}'.format(delta)))
 
 	def next(self):
-		self.fifo.write('seek_chapter +1\n')
+		self._write('seek_chapter +1')
 
 	def prev(self):
-		self.fifo.write('seek_chapter -1\n')
+		self._write('seek_chapter -1')
+
+	def togglePause(self):
+		self._write('pause')
 
 	def getTime(self):
-		self.fifo.write('get_time_pos\n')
+		self._write('pausing_keep_force get_time_pos')
 		try:
-			return self._expect('ANS_TIME_POSITION')
+			return float(self._expect('ANS_TIME_POSITION', 1))
 		except:
 			return None
+
+	def getDuration(self):
+		self._write('pausing_keep_force get_time_length')
+		try:
+			return float(self._expect('ANS_LENGTH', 1))
+		except:
+			return None
+
+	def paused(self):
+		self._write('pausing_keep_force get_property pause')
+		try:
+			return self._expect('ANS_pause', 1) == 'yes'
+		except:
+			return False
 
 	def getTrack(self):
 		pass
