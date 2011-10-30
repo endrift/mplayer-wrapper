@@ -148,7 +148,6 @@ class RootWindow(object):
 	def seek(self, value):
 		if self.player:
 			duration = self.player.getDuration()
-			print duration - value
 			if not duration:
 				self.stop()
 				return
@@ -357,7 +356,7 @@ class Playlist(object):
 
 	def play(self):
 		try:
-			os.mkfifo('/tmp/mplayer.fifo', 0660)
+			os.mkfifo('/tmp/mplayer.fifo', 0o0660)
 		except:
 			pass
 		proc = subprocess.Popen(['mplayer', '-playlist', '-', '-quiet', '-slave', '-input', 'file=/tmp/mplayer.fifo'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
