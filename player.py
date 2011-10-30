@@ -22,6 +22,8 @@ class RootWindow(object):
 		self.window.add(hbox)
 		controls = gtk.VBox()
 		hbox.pack_start(controls, False, False, 0)
+		self.playlistControls = gtk.VBox()
+		controls.pack_start(self.playlistControls, True, True, 0)
 		extButton = gtk.Button('External Drive')
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
 		ytButton = gtk.Button('YouTube Video')
@@ -29,10 +31,10 @@ class RootWindow(object):
 		remoteButton = gtk.Button('Remote Filesystem')
 		removeButton = gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
-		controls.pack_start(extButton)
-		controls.pack_start(ytButton)
-		controls.pack_start(remoteButton)
-		controls.pack_start(removeButton)
+		self.playlistControls.pack_start(extButton)
+		self.playlistControls.pack_start(ytButton)
+		self.playlistControls.pack_start(remoteButton)
+		self.playlistControls.pack_start(removeButton)
 
 		player = gtk.VBox()
 		hbox.pack_start(player)
@@ -40,6 +42,7 @@ class RootWindow(object):
 		self.playlist = PlaylistWidget()
 		scroller = gtk.ScrolledWindow()
 		scroller.add(self.playlist.widget)
+		scroller.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		player.pack_start(scroller)
 
 		self.scrubber = gtk.HScale()
@@ -78,12 +81,15 @@ class RootWindow(object):
 	def _loadIconSmall(self, iconName):
 		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
 
-	def _enableScrubber(self):
-		self.scrubber.set_sensitive(True)
+	def _setScrubberEnabled(self, enabled):
+		self.scrubber.set_sensitive(enabled)
+		if not enabled:
+			self.scrubber.set_value(0)
+		self._setPlaylistEnabled(not enabled)
 
-	def _disableScrubber(self):
-		self.scrubber.set_sensitive(False)
-		self.scrubber.set_value(0)
+	def _setPlaylistEnabled(self, enabled):
+		self.playlist.widget.set_sensitive(enabled)
+		self.playlistControls.set_sensitive(enabled)
 
 	def removeSelected(self):
 		self.playlist.removeSelected()
@@ -120,16 +126,16 @@ class RootWindow(object):
 	def update(self):
 		if self.player:
 			if self.player.ended():
-				self._disableScrubber()
+				self._setScrubberEnabled(False)
 				self.player = None
 				return False
 
 			try:
-				self._enableScrubber()
+				self._setScrubberEnabled(True)
 				self.scrubber.set_range(0, self.player.getDuration())
 				self.scrubber.set_value(self.player.getTime())
 			except:
-				self._disableScrubber()
+				self._setScrubberEnabled(False)
 				return not self.player.ended()
 
 			return True
@@ -144,6 +150,7 @@ class RootWindow(object):
 		p = self.playlist.compile()
 		if p:
 			self.player = p.play()
+			self._setScrubberEnabled(True)
 			self.timer = gobject.timeout_add(500, self.update)
 		else:
 			error = gtk.MessageDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, None)
@@ -170,7 +177,7 @@ class RootWindow(object):
 	def stop(self, widget=None):
 		if self.player:
 			self.player.quit()
-			self._disableScrubber()
+			self._setScrubberEnabled(False)
 			self.player = None
 			pass
 
