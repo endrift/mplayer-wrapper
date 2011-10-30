@@ -41,6 +41,7 @@ class RootWindow(object):
 
 		self.scrubber = gtk.HScale()
 		self.scrubber.set_draw_value(False)
+		self.scrubber.connect('adjust-bounds', lambda w, v: self.seek(v))
 		player.pack_end(self.scrubber, False, False, 0)
 
 		playButton = gtk.Button();
@@ -138,7 +139,20 @@ class RootWindow(object):
 		if self.player:
 			self.player.togglePause()
 
-	def stop(self, widget):
+	def seek(self, value):
+		if self.player:
+			duration = self.player.getDuration()
+			print duration - value
+			if not duration:
+				self.stop()
+				return
+			if value > duration - 6:
+				value = duration - 6
+			self.player.seek(value)
+			if value >= duration - 6:
+				self.player.pause()
+
+	def stop(self, widget=None):
 		if self.player:
 			self.player.quit()
 			self.player = None
@@ -267,6 +281,10 @@ class Control(object):
 	def togglePause(self):
 		self._write('pause')
 
+	def pause(self):
+		if not self.paused():
+			self.togglePause()
+
 	def getTime(self):
 		self._write('pausing_keep_force get_time_pos')
 		try:
@@ -287,6 +305,9 @@ class Control(object):
 			return self._expect('ANS_pause', 1) == 'yes'
 		except:
 			return False
+
+	def seek(self, value):
+		self._write('seek {} 2'.format(value))
 
 	def getTrack(self):
 		pass
