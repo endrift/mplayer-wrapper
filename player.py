@@ -28,12 +28,10 @@ class RootWindow(object):
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
 		ytButton = gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
-		remoteButton = gtk.Button('Remote Filesystem')
 		removeButton = gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
 		self.playlistControls.pack_start(extButton)
 		self.playlistControls.pack_start(ytButton)
-		self.playlistControls.pack_start(remoteButton)
 		self.playlistControls.pack_start(removeButton)
 
 		player = gtk.VBox()
