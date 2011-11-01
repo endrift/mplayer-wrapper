@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from gi.repository import Gtk, GObject
+import os
 import signal
 import subprocess
 
