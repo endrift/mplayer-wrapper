@@ -224,7 +224,6 @@ class YouTubeMovie(object):
 		command.extend(type)
 		command.append(self.url)
 		proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-		print(command)
 		(out, err) = proc.communicate()
 		if proc.returncode:
 			raise subprocess.CalledProcessError(proc.returncode, ' '.join(command))
