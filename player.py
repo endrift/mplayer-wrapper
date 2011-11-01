@@ -111,12 +111,12 @@ class RootWindow(object):
 		ytWindow = gtk.MessageDialog(None, 0, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK_CANCEL, None)
 		ytWindow.set_markup('Enter URL')
 		ytWindow.connect('delete_event', lambda w,d: w.destroy())
-		ytWindow.set_default_response(gtk.RESPONSE_CANCEL)
+		ytWindow.set_default_response(gtk.RESPONSE_OK)
 		inputBox = gtk.Entry()
 		ytWindow.vbox.pack_start(inputBox)
 		ytWindow.show_all()
 		response = ytWindow.run()
-		if response == gtk.RESPONSE_OK:
+		if response == gtk.RESPONSE_OK and inputBox.get_text():
 			try:
 				self.playlist.addItem(YouTubeMovie(inputBox.get_text()))
 			except:
@@ -216,8 +216,19 @@ class YouTubeMovie(object):
 			self.url = url
 		else:
 			self.url = 'http://www.youtube.com/watch?v={0}'.format(url)
-		self.download = subprocess.check_output(['youtube-dl', '-g', self.url])
-		self.title = subprocess.check_output(['youtube-dl', '-e', self.url]).rstrip()
+		self.download = self._pollProc(['-g'])
+		self.title = self._pollProc(['-e']).rstrip()
+
+	def _pollProc(self, type):
+		command = ['youtube-dl']
+		command.extend(type)
+		command.append(self.url)
+		proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+		print(command)
+		(out, err) = proc.communicate()
+		if proc.returncode:
+			raise subprocess.CalledProcessError(proc.returncode, ' '.join(command))
+		return out
 
 	def __repr__(self):
 		return 'YouTube: {0}'.format(self.url)
