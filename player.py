@@ -5,8 +5,8 @@ import signal
 import subprocess
 
 class RootWindow(object):
+	icons = Gtk.IconTheme.get_default()
 	def  __init__(self):
-		self.icons = Gtk.IconTheme.get_default()
 		self.player = None
 
 		self.window = Gtk.Window()
@@ -69,11 +69,13 @@ class RootWindow(object):
 		controls.pack_start(skipBox, True, True, 0)
 		self.window.show_all()
 
-	def _loadIcon(self, iconName):
-		return Gtk.Image.new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
+	@staticmethod
+	def _loadIcon(iconName):
+		return Gtk.Image.new_from_pixbuf(RootWindow.icons.load_icon(iconName, 96, 0))
 
-	def _loadIconSmall(self, iconName):
-		return Gtk.Image.new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
+	@staticmethod
+	def _loadIconSmall(iconName):
+		return Gtk.Image.new_from_pixbuf(RootWindow.icons.load_icon(iconName, 48, 0))
 
 	def _setScrubberEnabled(self, enabled):
 		self.scrubber.set_sensitive(enabled)
@@ -110,7 +112,7 @@ class RootWindow(object):
 		ytWindow.vbox.pack_start(inputBox, False, False, 0)
 		ytWindow.show_all()
 		response = ytWindow.run()
-		if response == Gtk.ResponseType.OK:
+		if response == Gtk.ResponseType.OK and inputBox.get_text():
 			try:
 				self.playlist.addItem(YouTubeMovie(inputBox.get_text()))
 			except:
@@ -197,7 +199,8 @@ class LocalFile(object):
 	def uri(self):
 		return self.filename
 
-	def type(self):
+	@staticmethod
+	def type():
 		return 'File'
 
 	def name(self):
@@ -209,8 +212,19 @@ class YouTubeMovie(object):
 			self.url = url
 		else:
 			self.url = 'http://www.youtube.com/watch?v={0}'.format(url)
-		self.download = subprocess.check_output(['youtube-dl', '-g', self.url])
-		self.title = subprocess.check_output(['youtube-dl', '-e', self.url]).rstrip()
+		self.download = self._pollProc(['-g'])
+		self.title = self._pollProc(['-e']).rstrip()
+
+	def _pollProc(self, type):
+		command = ['youtube-dl']
+		command.extend(type)
+		command.append(self.url)
+		proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+		print(command)
+		(out, err) = proc.communicate()
+		if proc.returncode:
+			raise subprocess.CalledProcessError(proc.returncode, ' '.join(command))
+		return out
 
 	def __repr__(self):
 		return 'YouTube: {0}'.format(self.url)
@@ -218,7 +232,8 @@ class YouTubeMovie(object):
 	def uri(self):
 		return self.download
 
-	def type(self):
+	@staticmethod
+	def type():
 		return 'YouTube'
 
 	def name(self):
