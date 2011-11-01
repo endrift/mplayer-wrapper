@@ -10,8 +10,8 @@ import signal
 import subprocess
 
 class RootWindow(object):
+	icons = gtk.icon_theme_get_default()
 	def  __init__(self):
-		self.icons = gtk.icon_theme_get_default()
 		self.player = None
 
 		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -73,11 +73,13 @@ class RootWindow(object):
 		controls.pack_start(skipBox)
 		self.window.show_all()
 
-	def _loadIcon(self, iconName):
-		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 96, 0))
+	@staticmethod
+	def _loadIcon(iconName):
+		return gtk.image_new_from_pixbuf(RootWindow.icons.load_icon(iconName, 96, 0))
 
-	def _loadIconSmall(self, iconName):
-		return gtk.image_new_from_pixbuf(self.icons.load_icon(iconName, 48, 0))
+	@staticmethod
+	def _loadIconSmall(iconName):
+		return gtk.image_new_from_pixbuf(RootWindow.icons.load_icon(iconName, 48, 0))
 
 	def _setScrubberEnabled(self, enabled):
 		self.scrubber.set_sensitive(enabled)
@@ -201,7 +203,8 @@ class LocalFile(object):
 	def uri(self):
 		return self.filename
 
-	def type(self):
+	@staticmethod
+	def type():
 		return 'File'
 
 	def name(self):
@@ -222,7 +225,8 @@ class YouTubeMovie(object):
 	def uri(self):
 		return self.download
 
-	def type(self):
+	@staticmethod
+	def type():
 		return 'YouTube'
 
 	def name(self):
