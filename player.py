@@ -58,15 +58,35 @@ class RootWindow(object):
 		controls.pack_start(stopButton, False, False, 0)
 
 		prevButton = Gtk.Button()
-		prevButton.add(self._loadIconSmall('player_rew'))
+		prevButton.add(self._loadIconSmall('player_start'))
 		prevButton.connect('clicked', self.prev)
 		nextButton = Gtk.Button()
-		nextButton.add(self._loadIconSmall('player_fwd'))
+		nextButton.add(self._loadIconSmall('player_end'))
 		nextButton.connect('clicked', self.next)
 		skipBox = Gtk.HBox()
 		skipBox.pack_start(prevButton, True, True, 0)
 		skipBox.pack_start(nextButton, True, True, 0)
 		controls.pack_start(skipBox, True, True, 0)
+
+		seekBox = Gtk.HBox()
+		seekBackButton = Gtk.Button()
+		seekBackButton.add(self._loadIconSmall('player_rew'))
+		seekBackButton.connect('clicked', lambda w: self.seekDelta(-10))
+		seekBox.pack_start(seekBackButton, True, True, 0)
+		seekForwardButton = Gtk.Button()
+		seekForwardButton.add(self._loadIconSmall('player_fwd'))
+		seekForwardButton.connect('clicked', lambda w: self.seekDelta(10))
+		seekBox.pack_start(seekForwardButton, True, True, 0)
+		controls.pack_start(seekBox, True, True, 0)
+
+		languageBox = Gtk.HBox()
+		subsButton = Gtk.Button('Subs')
+		subsButton.connect('clicked', lambda w: self.cycleSubs())
+		languageBox.pack_start(subsButton, True, True, 0)
+		langButton = Gtk.Button('Lang')
+		langButton.connect('clicked', lambda w: self.cycleLanguage())
+		languageBox.pack_start(langButton, True, True, 0)
+		controls.pack_start(languageBox, True, True, 0)
 		self.window.show_all()
 
 	@staticmethod
@@ -184,6 +204,18 @@ class RootWindow(object):
 	def prev(self, widget):
 		if self.player:
 			self.player.prev()
+
+	def seekDelta(self, delta):
+		if self.player:
+			self.player.seekDelta(delta)
+
+	def cycleSubs(self):
+		if self.player:
+			self.player.cycleSubs()
+
+	def cycleLanguage(self):
+		if self.player:
+			self.player.cycleLanguage()
 
 	def quit(self, widget, event, data=None):
 		Gtk.main_quit()
@@ -334,7 +366,7 @@ class Control(object):
 	def ended(self):
 		return not self.proc or self.proc.poll() is not None
 
-	def seek(self, delta):
+	def seekDelta(self, delta):
 		self._write('seek {0}'.format('+{0}'.format(delta) if delta >= 0 else '{0}'.format(delta)))
 
 	def next(self):
@@ -376,6 +408,12 @@ class Control(object):
 
 	def getTrack(self):
 		pass
+
+	def cycleSubs(self):
+		self._write('sub_select')
+
+	def cycleLanguage(self):
+		self._write('switch_audio')
 
 class Playlist(object):
 	def __init__(self):
