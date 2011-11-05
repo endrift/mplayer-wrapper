@@ -424,7 +424,11 @@ class Playlist(object):
 
 	def play(self):
 		try:
-			os.mkfifo('/tmp/mplayer.fifo', 0o0660)
+			os.remove('/tmp/mplayer.fifo')
+		except:
+			pass
+		try:
+			os.mkfifo('/tmp/mplayer.fifo', 0o660)
 		except:
 			pass
 		proc = subprocess.Popen(['mplayer', '-playlist', '-', '-quiet', '-slave', '-input', 'file=/tmp/mplayer.fifo'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
@@ -435,8 +439,14 @@ class Playlist(object):
 		return Control('/tmp/mplayer.fifo', proc)
 
 def main():
-	RootWindow()
-	gtk.main()
+	try:
+		RootWindow()
+		gtk.main()
+	finally:
+		try:
+			os.remove('/tmp/mplayer.fifo')
+		except:
+			pass
 
 if  __name__ == '__main__':
 	main()
