@@ -90,6 +90,39 @@ class RootWindow(object):
 		seekBox.pack_start(seekForwardButton)
 		controls.pack_start(seekBox)
 
+		dvdbox = gtk.Table(3, 3, True)
+		upButton = gtk.Button()
+		upButton.add(self._loadIconTiny('go-up'))
+		dvdbox.attach(upButton, 1, 2, 0, 1)
+		leftButton = gtk.Button()
+		leftButton.add(self._loadIconTiny('go-previous'))
+		dvdbox.attach(leftButton, 0, 1, 1, 2)
+		downButton = gtk.Button()
+		downButton.add(self._loadIconTiny('go-down'))
+		dvdbox.attach(downButton, 1, 2, 2, 3)
+		rightButton = gtk.Button()
+		rightButton.add(self._loadIconTiny('go-next'))
+		dvdbox.attach(rightButton, 2, 3, 1, 2)
+
+		selectButton = gtk.Button('OK')
+		dvdbox.attach(selectButton, 1, 2, 1, 2)
+
+		lastChapterButton = gtk.Button()
+		lastChapterButton.add(self._loadIconTiny('go-first'))
+		dvdbox.attach(lastChapterButton, 0, 1, 0, 1)
+		nextChapterButton = gtk.Button()
+		nextChapterButton.add(self._loadIconTiny('go-last'))
+		dvdbox.attach(nextChapterButton, 2, 3, 0, 1)
+
+		menuButton = gtk.Button()
+		menuButton.add(self._loadIconTiny('undo'))
+		dvdbox.attach(menuButton, 0, 1, 2, 3)
+		ejectButton = gtk.Button()
+		ejectButton.add(self._loadIconTiny('player_eject'))
+		dvdbox.attach(ejectButton, 2, 3, 2, 3)
+
+		controls.pack_start(dvdbox)
+
 		languageBox = gtk.HBox()
 		subsButton = gtk.Button('Subs')
 		subsButton.connect('clicked', lambda w: self.cycleSubs())
@@ -98,6 +131,7 @@ class RootWindow(object):
 		langButton.connect('clicked', lambda w: self.cycleLanguage())
 		languageBox.pack_start(langButton)
 		controls.pack_start(languageBox)
+
 		self.window.show_all()
 
 	@staticmethod
@@ -107,6 +141,10 @@ class RootWindow(object):
 	@staticmethod
 	def _loadIconSmall(iconName):
 		return gtk.image_new_from_pixbuf(RootWindow.icons.load_icon(iconName, 48, 0))
+
+	@staticmethod
+	def _loadIconTiny(iconName):
+		return gtk.image_new_from_pixbuf(RootWindow.icons.load_icon(iconName, 32, 0))
 
 	def _setScrubberEnabled(self, enabled):
 		self.scrubber.set_sensitive(enabled)
