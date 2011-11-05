@@ -62,15 +62,35 @@ class RootWindow(object):
 		controls.pack_start(stopButton)
 
 		prevButton = gtk.Button()
-		prevButton.add(self._loadIconSmall('player_rew'))
+		prevButton.add(self._loadIconSmall('player_start'))
 		prevButton.connect('clicked', self.prev)
 		nextButton = gtk.Button()
-		nextButton.add(self._loadIconSmall('player_fwd'))
+		nextButton.add(self._loadIconSmall('player_end'))
 		nextButton.connect('clicked', self.next)
 		skipBox = gtk.HBox()
 		skipBox.pack_start(prevButton)
 		skipBox.pack_start(nextButton)
 		controls.pack_start(skipBox)
+
+		seekBox = gtk.HBox()
+		seekBackButton = gtk.Button()
+		seekBackButton.add(self._loadIconSmall('player_rew'))
+		seekBackButton.connect('clicked', lambda w: self.seekDelta(-10))
+		seekBox.pack_start(seekBackButton)
+		seekForwardButton = gtk.Button()
+		seekForwardButton.add(self._loadIconSmall('player_fwd'))
+		seekForwardButton.connect('clicked', lambda w: self.seekDelta(10))
+		seekBox.pack_start(seekForwardButton)
+		controls.pack_start(seekBox)
+
+		languageBox = gtk.HBox()
+		subsButton = gtk.Button('Subs')
+		subsButton.connect('clicked', lambda w: self.cycleSubs())
+		languageBox.pack_start(subsButton)
+		langButton = gtk.Button('Lang')
+		langButton.connect('clicked', lambda w: self.cycleLanguage())
+		languageBox.pack_start(langButton)
+		controls.pack_start(languageBox)
 		self.window.show_all()
 
 	@staticmethod
@@ -188,6 +208,18 @@ class RootWindow(object):
 	def prev(self, widget):
 		if self.player:
 			self.player.prev()
+
+	def seekDelta(self, delta):
+		if self.player:
+			self.player.seekDelta(delta)
+
+	def cycleSubs(self):
+		if self.player:
+			self.player.cycleSubs()
+
+	def cycleLanguage(self):
+		if self.player:
+			self.player.cycleLanguage()
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
@@ -337,7 +369,7 @@ class Control(object):
 	def ended(self):
 		return not self.proc or self.proc.poll() is not None
 
-	def seek(self, delta):
+	def seekDelta(self, delta):
 		self._write('seek {0}'.format('+{0}'.format(delta) if delta >= 0 else '{0}'.format(delta)))
 
 	def next(self):
@@ -379,6 +411,12 @@ class Control(object):
 
 	def getTrack(self):
 		pass
+
+	def cycleSubs(self):
+		self._write('sub_select')
+
+	def cycleLanguage(self):
+		self._write('switch_audio')
 
 class Playlist(object):
 	def __init__(self):
