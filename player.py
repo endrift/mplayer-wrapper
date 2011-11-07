@@ -11,6 +11,8 @@ import select
 import signal
 import subprocess
 
+CDROMEJECT = 0x5309 # Gleaned from <linux/cdrom.h>
+
 class RootWindow(object):
 	icons = gtk.icon_theme_get_default()
 	def  __init__(self):
@@ -302,8 +304,8 @@ class RootWindow(object):
 
 	def eject(self):
 		try:
-			cd = os.open('/dev/sr0', os.O_RDONLY)
-			fcntl.ioctl(cd, 0x5309)
+			cd = os.open('/dev/sr0', os.O_RDWR | os.O_NONBLOCK)
+			fcntl.ioctl(cd, CDROMEJECT)
 			os.close(cd)
 		except:
 			print('Could not eject CD')
