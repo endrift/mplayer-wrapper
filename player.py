@@ -4,6 +4,7 @@ pygtk.require('2.0')
 import gtk
 import gobject
 
+import fcntl
 import functools
 import os
 import select
@@ -93,32 +94,41 @@ class RootWindow(object):
 		dvdbox = gtk.Table(3, 3, True)
 		upButton = gtk.Button()
 		upButton.add(self._loadIconTiny('go-up'))
+		upButton.connect('clicked', lambda w: self.dvdControl('up'))
 		dvdbox.attach(upButton, 1, 2, 0, 1)
 		leftButton = gtk.Button()
 		leftButton.add(self._loadIconTiny('go-previous'))
+		leftButton.connect('clicked', lambda w: self.dvdControl('left'))
 		dvdbox.attach(leftButton, 0, 1, 1, 2)
 		downButton = gtk.Button()
 		downButton.add(self._loadIconTiny('go-down'))
+		downButton.connect('clicked', lambda w: self.dvdControl('down'))
 		dvdbox.attach(downButton, 1, 2, 2, 3)
 		rightButton = gtk.Button()
 		rightButton.add(self._loadIconTiny('go-next'))
+		rightButton.connect('clicked', lambda w: self.dvdControl('right'))
 		dvdbox.attach(rightButton, 2, 3, 1, 2)
 
 		selectButton = gtk.Button('OK')
+		selectButton.connect('clicked', lambda w: self.dvdControl('select'))
 		dvdbox.attach(selectButton, 1, 2, 1, 2)
 
 		lastChapterButton = gtk.Button()
 		lastChapterButton.add(self._loadIconTiny('go-first'))
+		lastChapterButton.connect('clicked', lambda w: self.seekChapter(-1))
 		dvdbox.attach(lastChapterButton, 0, 1, 0, 1)
 		nextChapterButton = gtk.Button()
 		nextChapterButton.add(self._loadIconTiny('go-last'))
+		nextChapterButton.connect('clicked', lambda w: self.seekChapter(1))
 		dvdbox.attach(nextChapterButton, 2, 3, 0, 1)
 
 		menuButton = gtk.Button()
 		menuButton.add(self._loadIconTiny('undo'))
+		menuButton.connect('clicked', lambda w: self.dvdControl('menu'))
 		dvdbox.attach(menuButton, 0, 1, 2, 3)
 		ejectButton = gtk.Button()
 		ejectButton.add(self._loadIconTiny('player_eject'))
+		ejectButton.connect('clicked', lambda w: self.eject())
 		dvdbox.attach(ejectButton, 2, 3, 2, 3)
 
 		controls.pack_start(dvdbox)
@@ -261,7 +271,6 @@ class RootWindow(object):
 			self.player.quit()
 			self._setScrubberEnabled(False)
 			self.player = None
-			pass
 
 	def next(self, widget):
 		if self.player:
@@ -282,6 +291,22 @@ class RootWindow(object):
 	def cycleLanguage(self):
 		if self.player:
 			self.player.cycleLanguage()
+
+	def dvdControl(self, control):
+		if self.player:
+			self.player.dvdControl(control)
+
+	def seekChapter(self, direction):
+		if self.player:
+			self.player.seekChapter(direction)
+
+	def eject(self):
+		try:
+			cd = os.open('/dev/sr0', os.O_RDONLY)
+			fcntl.ioctl(cd, 0x5309)
+			os.close(cd)
+		except:
+			print('Could not eject CD')
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
@@ -474,6 +499,9 @@ class Control(object):
 	def seek(self, value):
 		self._write('seek {0} 2'.format(value))
 
+	def seekChapter(self, direction):
+		self._write('seek_chapter {0}'.format(direction))
+
 	def getTrack(self):
 		pass
 
@@ -482,6 +510,9 @@ class Control(object):
 
 	def cycleLanguage(self):
 		self._write('switch_audio')
+		
+	def dvdControl(self, control):
+		self._write('dvdnav {0}'.format(control))
 
 class Playlist(object):
 	def __init__(self):
