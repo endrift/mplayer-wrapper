@@ -315,16 +315,12 @@ class RootWindow(object):
 	def eject(self):
 		try:
 			cd = os.open('/dev/sr0', os.O_RDWR | os.O_NONBLOCK)
-			print('Opened CD')
 			status = fcntl.ioctl(cd, CDROM_DRIVE_STATUS)
 			if status == 2:
-				print('Tray is already open!')
 				fcntl.ioctl(cd, CDROMCLOSETRAY)
 			else:
 				if status == 4:
-					print('Need to unlock door')
 					fcntl.ioctl(cd, CDROM_LOCKDOOR)
-				print('Now ejecting')
 				fcntl.ioctl(cd, CDROMEJECT)
 		except:
 			print('Could not eject CD')
