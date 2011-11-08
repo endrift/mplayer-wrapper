@@ -4,6 +4,7 @@ pygtk.require('2.0')
 import gtk
 import gobject
 
+import functools
 import os
 import select
 import signal
@@ -26,11 +27,14 @@ class RootWindow(object):
 		controls.pack_start(self.playlistControls, True, True, 0)
 		extButton = gtk.Button('External Drive')
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
+		folderButton = gtk.Button('Folder')
+		folderButton.connect('clicked', lambda w: self.selectFolder('/'))
 		ytButton = gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
 		removeButton = gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
 		self.playlistControls.pack_start(extButton)
+		self.playlistControls.pack_start(folderButton)
 		self.playlistControls.pack_start(ytButton)
 		self.playlistControls.pack_start(removeButton)
 
@@ -125,6 +129,20 @@ class RootWindow(object):
 		response = f.run()
 		if response == gtk.RESPONSE_OK:
 			self.playlist.addItems([LocalFile(name) for name in f.get_filenames()])
+		f.destroy()
+
+	def selectFolder(self, root):
+		f = gtk.FileChooserDialog('Select Folder', None, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK))
+		f.set_default_response(gtk.RESPONSE_CANCEL)
+		f.set_select_multiple(True)
+		f.set_create_folders(False)
+		f.set_current_folder(root)
+		response = f.run()
+		if response == gtk.RESPONSE_OK:
+			paths = functools.reduce(list.__add__, [os.walk(name) for name in f.get_filenames()])
+			files = functools.reduce(list.__add__, [[os.path.join(root, file) for file in files] for root, dirs, files in paths])
+			files.sort()
+			self.playlist.addItems([LocalFile(name) for name in files])
 		f.destroy()
 
 	def selectYouTube(self):
