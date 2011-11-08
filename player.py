@@ -33,10 +33,13 @@ class RootWindow(object):
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
 		removeButton = gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
+		removeAllButton = gtk.Button('Remove All')
+		removeAllButton.connect('clicked', lambda w: self.removeAll())
 		self.playlistControls.pack_start(extButton)
 		self.playlistControls.pack_start(folderButton)
 		self.playlistControls.pack_start(ytButton)
 		self.playlistControls.pack_start(removeButton)
+		self.playlistControls.pack_start(removeAllButton)
 
 		player = gtk.VBox()
 		hbox.pack_start(player)
@@ -117,6 +120,9 @@ class RootWindow(object):
 
 	def removeSelected(self):
 		self.playlist.removeSelected()
+
+	def removeAll(self):
+		self.playlist.clear()
 
 	def selectDrive(self):
 		pass
@@ -328,6 +334,9 @@ class PlaylistWidget(object):
 		iters = [model.get_iter(row) for row in rows]
 		for i in iters:
 			model.remove(i)
+
+	def clear(self):
+		self.listStore.clear()
 
 	def compile(self):
 		if not self.listStore.get_iter_root():
