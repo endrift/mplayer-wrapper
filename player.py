@@ -38,6 +38,8 @@ class RootWindow(object):
 		folderButton.connect('clicked', lambda w: self.selectFolder('/'))
 		ytButton = gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
+		dvdButton = gtk.Button('DVD')
+		dvdButton.connect('clicked', lambda w: self.selectDVD())
 		removeButton = gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
 		removeAllButton = gtk.Button('Remove All')
@@ -45,6 +47,7 @@ class RootWindow(object):
 		self.playlistControls.pack_start(extButton)
 		self.playlistControls.pack_start(folderButton)
 		self.playlistControls.pack_start(ytButton)
+		self.playlistControls.pack_start(dvdButton)
 		self.playlistControls.pack_start(removeButton)
 		self.playlistControls.pack_start(removeAllButton)
 
@@ -221,6 +224,9 @@ class RootWindow(object):
 				pass
 		ytWindow.destroy()
 
+	def selectDVD(self):
+		self.playlist.addItem(DVDMovie())
+
 	def update(self):
 		if self.player:
 			if self.player.ended():
@@ -377,6 +383,23 @@ class YouTubeMovie(object):
 
 	def name(self):
 		return self.title
+
+class DVDMovie(object):
+	def __init__(self):
+		pass
+
+	def __repr__(self):
+		return 'dvd'
+
+	def uri(self):
+		return 'dvdnav://'
+
+	@staticmethod
+	def type():
+		return 'DVD'
+
+	def name(self):
+		return 'DVD'
 
 class PlaylistWidget(object):
 	def __init__(self):
