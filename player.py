@@ -1,8 +1,17 @@
 #!/usr/bin/env python
 from gi.repository import Gtk, GObject
+
+import fcntl
+import functools
 import os
 import signal
 import subprocess
+
+# Gleaned from <linux/cdrom.h>
+CDROMEJECT = 0x5309
+CDROMCLOSETRAY = 0x5319
+CDROM_DRIVE_STATUS = 0x5326
+CDROM_LOCKDOOR = 0x5329
 
 class RootWindow(object):
 	icons = Gtk.IconTheme.get_default()
@@ -12,23 +21,35 @@ class RootWindow(object):
 		self.window = Gtk.Window()
 		self.window.connect('delete_event', self.quit)
 		self.window.set_title('Media Player')
-		self.window.set_default_size(600, 300)
+		self.window.set_default_size(900, 300)
 		hbox = Gtk.HBox()
 		self.window.add(hbox)
 		controls = Gtk.VBox()
 		hbox.pack_start(controls, False, False, 0)
-		self.playlistControls = Gtk.VBox()
+		self.playlistControls = Gtk.HBox(True)
+		primaryControls = Gtk.VBox()
+		secondaryControls = Gtk.VBox()
+		self.playlistControls.pack_start(primaryControls, True, True, 0)
+		self.playlistControls.pack_start(secondaryControls, True, True, 0)
 		controls.pack_start(self.playlistControls, True, True, 0)
 		extButton = Gtk.Button('External Drive')
 		extButton.connect('clicked', lambda w: self.selectFile('/'))
+		folderButton = Gtk.Button('Folder')
+		folderButton.connect('clicked', lambda w: self.selectFolder('/'))
 		ytButton = Gtk.Button('YouTube Video')
 		ytButton.connect('clicked', lambda w: self.selectYouTube())
-		remoteButton = Gtk.Button('Remote Filesystem')
+		dvdButton = Gtk.Button('DVD')
+		dvdButton.connect('clicked', lambda w: self.selectDVD())
 		removeButton = Gtk.Button('Remove Selected')
 		removeButton.connect('clicked', lambda w: self.removeSelected())
-		self.playlistControls.pack_start(extButton, False, False, 0)
-		self.playlistControls.pack_start(ytButton, False, False, 0)
-		self.playlistControls.pack_start(removeButton, False, False, 0)
+		removeAllButton = Gtk.Button('Remove All')
+		removeAllButton.connect('clicked', lambda w: self.removeAll())
+		primaryControls.pack_start(extButton, True, True, 0)
+		primaryControls.pack_start(folderButton, True, True, 0)
+		primaryControls.pack_start(removeButton, True, True, 0)
+		secondaryControls.pack_start(ytButton, True, True, 0)
+		secondaryControls.pack_start(dvdButton, True, True, 0)
+		secondaryControls.pack_start(removeAllButton, True, True, 0)
 
 		player = Gtk.VBox()
 		hbox.pack_start(player, True, True, 0)
@@ -44,6 +65,12 @@ class RootWindow(object):
 		self.scrubber.connect('adjust-bounds', lambda w, v: self.seek(v))
 		player.pack_end(self.scrubber, False, False, 0)
 
+		leftControls = Gtk.VBox(True)
+		rightControls = Gtk.VBox(True)
+		bigButtons = Gtk.HBox(True)
+		controls.pack_start(bigButtons, True, True, 0)
+		bigButtons.pack_start(leftControls, True, True, 0)
+		bigButtons.pack_start(rightControls, True, True, 0)
 		playButton = Gtk.Button();
 		playButton.add(self._loadIcon('player_play'))
 		playButton.connect('clicked', self.play)
@@ -53,15 +80,16 @@ class RootWindow(object):
 		stopButton = Gtk.Button()
 		stopButton.add(self._loadIcon('player_stop'))
 		stopButton.connect('clicked', self.stop)
-		controls.pack_start(playButton, False, False, 0)
-		controls.pack_start(pauseButton, False, False, 0)
-		controls.pack_start(stopButton, False, False, 0)
+
+		leftControls.pack_start(playButton, True, True, 0)
+		rightControls.pack_start(pauseButton, True, True, 0)
+		leftControls.pack_start(stopButton, True, True, 0)
 
 		prevButton = Gtk.Button()
-		prevButton.add(self._loadIconSmall('player_start'))
+		prevButton.add(self._loadIcon('player_start'))
 		prevButton.connect('clicked', self.prev)
 		nextButton = Gtk.Button()
-		nextButton.add(self._loadIconSmall('player_end'))
+		nextButton.add(self._loadIcon('player_end'))
 		nextButton.connect('clicked', self.next)
 		skipBox = Gtk.HBox()
 		skipBox.pack_start(prevButton, True, True, 0)
@@ -70,23 +98,66 @@ class RootWindow(object):
 
 		seekBox = Gtk.HBox()
 		seekBackButton = Gtk.Button()
-		seekBackButton.add(self._loadIconSmall('player_rew'))
+		seekBackButton.add(self._loadIcon('player_rew'))
 		seekBackButton.connect('clicked', lambda w: self.seekDelta(-10))
 		seekBox.pack_start(seekBackButton, True, True, 0)
 		seekForwardButton = Gtk.Button()
-		seekForwardButton.add(self._loadIconSmall('player_fwd'))
+		seekForwardButton.add(self._loadIcon('player_fwd'))
 		seekForwardButton.connect('clicked', lambda w: self.seekDelta(10))
 		seekBox.pack_start(seekForwardButton, True, True, 0)
 		controls.pack_start(seekBox, True, True, 0)
 
-		languageBox = Gtk.HBox()
-		subsButton = Gtk.Button('Subs')
+		dvdbox = Gtk.Table(3, 3, True)
+		upButton = Gtk.Button()
+		upButton.add(self._loadIconTiny('go-up'))
+		upButton.connect('clicked', lambda w: self.dvdControl('up'))
+		dvdbox.attach(upButton, 1, 2, 0, 1)
+		leftButton = Gtk.Button()
+		leftButton.add(self._loadIconTiny('go-previous'))
+		leftButton.connect('clicked', lambda w: self.dvdControl('left'))
+		dvdbox.attach(leftButton, 0, 1, 1, 2)
+		downButton = Gtk.Button()
+		downButton.add(self._loadIconTiny('go-down'))
+		downButton.connect('clicked', lambda w: self.dvdControl('down'))
+		dvdbox.attach(downButton, 1, 2, 2, 3)
+		rightButton = Gtk.Button()
+		rightButton.add(self._loadIconTiny('go-next'))
+		rightButton.connect('clicked', lambda w: self.dvdControl('right'))
+		dvdbox.attach(rightButton, 2, 3, 1, 2)
+
+		selectButton = Gtk.Button('OK')
+		selectButton.connect('clicked', lambda w: self.dvdControl('select'))
+		dvdbox.attach(selectButton, 1, 2, 1, 2)
+
+		lastChapterButton = Gtk.Button()
+		lastChapterButton.add(self._loadIconTiny('go-first'))
+		lastChapterButton.connect('clicked', lambda w: self.seekChapter(-1))
+		dvdbox.attach(lastChapterButton, 0, 1, 0, 1)
+		nextChapterButton = Gtk.Button()
+		nextChapterButton.add(self._loadIconTiny('go-last'))
+		nextChapterButton.connect('clicked', lambda w: self.seekChapter(1))
+		dvdbox.attach(nextChapterButton, 2, 3, 0, 1)
+
+		menuButton = Gtk.Button()
+		menuButton.add(self._loadIconTiny('undo'))
+		menuButton.connect('clicked', lambda w: self.dvdControl('menu'))
+		dvdbox.attach(menuButton, 0, 1, 2, 3)
+		ejectButton = Gtk.Button()
+		ejectButton.add(self._loadIconTiny('player_eject'))
+		ejectButton.connect('clicked', lambda w: self.eject())
+		dvdbox.attach(ejectButton, 2, 3, 2, 3)
+
+		rightControls.pack_start(dvdbox, True, True, 0)
+
+		languageBox = Gtk.HBox(True)
+		subsButton = Gtk.Button('Subtitles')
 		subsButton.connect('clicked', lambda w: self.cycleSubs())
 		languageBox.pack_start(subsButton, True, True, 0)
-		langButton = Gtk.Button('Lang')
+		langButton = Gtk.Button('Languages')
 		langButton.connect('clicked', lambda w: self.cycleLanguage())
 		languageBox.pack_start(langButton, True, True, 0)
 		controls.pack_start(languageBox, True, True, 0)
+
 		self.window.show_all()
 
 	@staticmethod
@@ -96,6 +167,10 @@ class RootWindow(object):
 	@staticmethod
 	def _loadIconSmall(iconName):
 		return Gtk.Image.new_from_pixbuf(RootWindow.icons.load_icon(iconName, 48, 0))
+
+	@staticmethod
+	def _loadIconTiny(iconName):
+		return Gtk.Image.new_from_pixbuf(RootWindow.icons.load_icon(iconName, 32, 0))
 
 	def _setScrubberEnabled(self, enabled):
 		self.scrubber.set_sensitive(enabled)
@@ -110,6 +185,9 @@ class RootWindow(object):
 	def removeSelected(self):
 		self.playlist.removeSelected()
 
+	def removeAll(self):
+		self.playlist.clear()
+
 	def selectDrive(self):
 		pass
 
@@ -121,6 +199,20 @@ class RootWindow(object):
 		response = f.run()
 		if response == Gtk.ResponseType.OK:
 			self.playlist.addItems([LocalFile(name) for name in f.get_filenames()])
+		f.destroy()
+
+	def selectFolder(self, root):
+		f = Gtk.FileChooserDialog('Select Folder', None, Gtk.FileChooserAction.SELECT_FOLDER, (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+		f.set_default_response(Gtk.ResponseType.CANCEL)
+		f.set_select_multiple(True)
+		f.set_create_folders(False)
+		f.set_current_folder(root)
+		response = f.run()
+		if response == Gtk.ResponseType.OK:
+			paths = functools.reduce(list.__add__, [os.walk(name) for name in f.get_filenames()])
+			files = functools.reduce(list.__add__, [[os.path.join(root, file) for file in files] for root, dirs, files in paths])
+			files.sort()
+			self.playlist.addItems([LocalFile(name) for name in files])
 		f.destroy()
 
 	def selectYouTube(self):
@@ -138,6 +230,9 @@ class RootWindow(object):
 			except:
 				pass
 		ytWindow.destroy()
+
+	def selectDVD(self):
+		self.playlist.addItem(DVDMovie())
 
 	def update(self):
 		if self.player:
@@ -195,7 +290,6 @@ class RootWindow(object):
 			self.player.quit()
 			self._setScrubberEnabled(False)
 			self.player = None
-			pass
 
 	def next(self, widget):
 		if self.player:
@@ -216,6 +310,29 @@ class RootWindow(object):
 	def cycleLanguage(self):
 		if self.player:
 			self.player.cycleLanguage()
+
+	def dvdControl(self, control):
+		if self.player:
+			self.player.dvdControl(control)
+
+	def seekChapter(self, direction):
+		if self.player:
+			self.player.seekChapter(direction)
+
+	def eject(self):
+		try:
+			cd = os.open('/dev/sr0', os.O_RDWR | os.O_NONBLOCK)
+			status = fcntl.ioctl(cd, CDROM_DRIVE_STATUS)
+			if status == 2:
+				fcntl.ioctl(cd, CDROMCLOSETRAY)
+			else:
+				if status == 4:
+					fcntl.ioctl(cd, CDROM_LOCKDOOR)
+				fcntl.ioctl(cd, CDROMEJECT)
+		except:
+			print('Could not eject CD')
+		finally:
+			os.close(cd)
 
 	def quit(self, widget, event, data=None):
 		Gtk.main_quit()
@@ -270,6 +387,32 @@ class YouTubeMovie(object):
 	def name(self):
 		return self.title
 
+class DVDMovie(object):
+	def __init__(self, dev='/dev/dvd'):
+		self.device = dev
+
+		command = ['blkid', '-o', 'value', '-s', 'LABEL']
+		command.append(self.device)
+		proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+		(out, err) = proc.communicate()
+		if proc.returncode:
+			self.label = 'Unknown DVD'
+		else:
+			self.label = out.rstrip()
+
+	def __repr__(self):
+		return 'DVD: {0}'.format(self.device)
+
+	def uri(self):
+		return 'dvdnav:///{0}'.format(self.device)
+
+	@staticmethod
+	def type():
+		return 'DVD'
+
+	def name(self):
+		return self.label
+
 class PlaylistWidget(object):
 	def __init__(self):
 		def format_name(col, cell, model, iter, func_data):
@@ -307,6 +450,9 @@ class PlaylistWidget(object):
 		iters = [model.get_iter(row) for row in rows]
 		for i in iters:
 			model.remove(i)
+
+	def clear(self):
+		self.listStore.clear()
 
 	def compile(self):
 		if not self.listStore.get_iter_first():
@@ -406,6 +552,9 @@ class Control(object):
 	def seek(self, value):
 		self._write('seek {0} 2'.format(value))
 
+	def seekChapter(self, direction):
+		self._write('seek_chapter {0}'.format(direction))
+
 	def getTrack(self):
 		pass
 
@@ -414,6 +563,9 @@ class Control(object):
 
 	def cycleLanguage(self):
 		self._write('switch_audio')
+		
+	def dvdControl(self, control):
+		self._write('dvdnav {0}'.format(control))
 
 class Playlist(object):
 	def __init__(self):
@@ -421,19 +573,28 @@ class Playlist(object):
 
 	def play(self):
 		try:
-			os.mkfifo('/tmp/mplayer.fifo', 0o0660)
+			os.remove('/tmp/mplayer.fifo')
+		except:
+			pass
+		try:
+			os.mkfifo('/tmp/mplayer.fifo', 0o660)
 		except:
 			pass
 		proc = subprocess.Popen(['mplayer', '-playlist', '-', '-quiet', '-slave', '-input', 'file=/tmp/mplayer.fifo'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
 		for i in self.items:
-			proc.stdin.write(i)
-			proc.stdin.write('\n')
+			proc.stdin.write((i + '\n').encode('utf-8'))
 		proc.stdin.close()
 		return Control('/tmp/mplayer.fifo', proc)
 
 def main():
-	RootWindow()
-	Gtk.main()
+	try:
+		RootWindow()
+		Gtk.main()
+	finally:
+		try:
+			os.remove('/tmp/mplayer.fifo')
+		except:
+			pass
 
 if  __name__ == '__main__':
 	main()
