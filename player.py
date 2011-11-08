@@ -381,21 +381,30 @@ class YouTubeMovie(object):
 		return self.title
 
 class DVDMovie(object):
-	def __init__(self):
-		pass
+	def __init__(self, dev='/dev/dvd'):
+		self.device = dev
+
+		command = ['blkid', '-o', 'value', '-s', 'LABEL']
+		command.append(self.device)
+		proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+		(out, err) = proc.communicate()
+		if proc.returncode:
+			self.label = 'Unknown DVD'
+		else:
+			self.label = out.rstrip()
 
 	def __repr__(self):
-		return 'dvd'
+		return 'DVD: {0}'.format(self.device)
 
 	def uri(self):
-		return 'dvdnav://'
+		return 'dvdnav:///{0}'.format(self.device)
 
 	@staticmethod
 	def type():
 		return 'DVD'
 
 	def name(self):
-		return 'DVD'
+		return self.label
 
 class PlaylistWidget(object):
 	def __init__(self):
