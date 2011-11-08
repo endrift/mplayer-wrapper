@@ -11,7 +11,11 @@ import select
 import signal
 import subprocess
 
-CDROMEJECT = 0x5309 # Gleaned from <linux/cdrom.h>
+# Gleaned from <linux/cdrom.h>
+CDROMEJECT = 0x5309
+CDROMCLOSETRAY = 0x5319
+CDROM_DRIVE_STATUS = 0x5326
+CDROM_LOCKDOOR = 0x5329
 
 class RootWindow(object):
 	icons = gtk.icon_theme_get_default()
@@ -305,10 +309,21 @@ class RootWindow(object):
 	def eject(self):
 		try:
 			cd = os.open('/dev/sr0', os.O_RDWR | os.O_NONBLOCK)
-			fcntl.ioctl(cd, CDROMEJECT)
-			os.close(cd)
+			print('Opened CD')
+			status = fcntl.ioctl(cd, CDROM_DRIVE_STATUS)
+			if status == 2:
+				print('Tray is already open!')
+				fcntl.ioctl(cd, CDROMCLOSETRAY)
+			else:
+				if status == 4:
+					print('Need to unlock door')
+					fcntl.ioctl(cd, CDROM_LOCKDOOR)
+				print('Now ejecting')
+				fcntl.ioctl(cd, CDROMEJECT)
 		except:
 			print('Could not eject CD')
+		finally:
+			os.close(cd)
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
