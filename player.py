@@ -294,6 +294,7 @@ class RootWindow(object):
 			self.player = None
 
 	def eject(self):
+		cd = None
 		try:
 			cd = os.open('/dev/sr0', os.O_RDWR | os.O_NONBLOCK)
 			status = fcntl.ioctl(cd, CDROM_DRIVE_STATUS)
@@ -306,7 +307,8 @@ class RootWindow(object):
 		except:
 			print('Could not eject CD')
 		finally:
-			os.close(cd)
+			if cd is not None:
+				os.close(cd)
 
 	def quit(self, widget, event, data=None):
 		gtk.main_quit()
