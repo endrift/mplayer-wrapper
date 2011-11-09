@@ -20,6 +20,12 @@ CDROM_LOCKDOOR = 0x5329
 class RootWindow(object):
 	icons = gtk.icon_theme_get_default()
 	def  __init__(self):
+		def cmd(command, *args):
+			def l(w):
+				if self.player:
+					command(self.player, *args)
+			return l
+				
 		self.player = None
 
 		self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -80,7 +86,7 @@ class RootWindow(object):
 		playButton.connect('clicked', self.play)
 		pauseButton = gtk.Button()
 		pauseButton.add(self._loadIcon('player_pause'))
-		pauseButton.connect('clicked', self.pause)
+		pauseButton.connect('clicked', cmd(Control.togglePause))
 		stopButton = gtk.Button()
 		stopButton.add(self._loadIcon('player_stop'))
 		stopButton.connect('clicked', self.stop)
@@ -90,10 +96,10 @@ class RootWindow(object):
 
 		prevButton = gtk.Button()
 		prevButton.add(self._loadIcon('player_start'))
-		prevButton.connect('clicked', self.prev)
+		prevButton.connect('clicked', cmd(Control.prev))
 		nextButton = gtk.Button()
 		nextButton.add(self._loadIcon('player_end'))
-		nextButton.connect('clicked', self.next)
+		nextButton.connect('clicked', cmd(Control.next))
 		skipBox = gtk.HBox()
 		skipBox.pack_start(prevButton)
 		skipBox.pack_start(nextButton)
@@ -102,48 +108,48 @@ class RootWindow(object):
 		seekBox = gtk.HBox()
 		seekBackButton = gtk.Button()
 		seekBackButton.add(self._loadIcon('player_rew'))
-		seekBackButton.connect('clicked', lambda w: self.seekDelta(-10))
+		seekBackButton.connect('clicked', cmd(Control.seekDelta, -10))
 		seekBox.pack_start(seekBackButton)
 		seekForwardButton = gtk.Button()
 		seekForwardButton.add(self._loadIcon('player_fwd'))
-		seekForwardButton.connect('clicked', lambda w: self.seekDelta(10))
+		seekForwardButton.connect('clicked', cmd(Control.seekDelta, 10))
 		seekBox.pack_start(seekForwardButton)
 		controls.pack_start(seekBox)
 
 		dvdbox = gtk.Table(3, 3, True)
 		upButton = gtk.Button()
 		upButton.add(self._loadIconTiny('go-up'))
-		upButton.connect('clicked', lambda w: self.dvdControl('up'))
+		upButton.connect('clicked', cmd(Control.dvdControl, 'up'))
 		dvdbox.attach(upButton, 1, 2, 0, 1)
 		leftButton = gtk.Button()
 		leftButton.add(self._loadIconTiny('go-previous'))
-		leftButton.connect('clicked', lambda w: self.dvdControl('left'))
+		leftButton.connect('clicked', cmd(Control.dvdControl, 'left'))
 		dvdbox.attach(leftButton, 0, 1, 1, 2)
 		downButton = gtk.Button()
 		downButton.add(self._loadIconTiny('go-down'))
-		downButton.connect('clicked', lambda w: self.dvdControl('down'))
+		downButton.connect('clicked', cmd(Control.dvdControl, 'down'))
 		dvdbox.attach(downButton, 1, 2, 2, 3)
 		rightButton = gtk.Button()
 		rightButton.add(self._loadIconTiny('go-next'))
-		rightButton.connect('clicked', lambda w: self.dvdControl('right'))
+		rightButton.connect('clicked', cmd(Control.dvdControl, 'right'))
 		dvdbox.attach(rightButton, 2, 3, 1, 2)
 
 		selectButton = gtk.Button('OK')
-		selectButton.connect('clicked', lambda w: self.dvdControl('select'))
+		selectButton.connect('clicked', cmd(Control.dvdControl, 'select'))
 		dvdbox.attach(selectButton, 1, 2, 1, 2)
 
 		lastChapterButton = gtk.Button()
 		lastChapterButton.add(self._loadIconTiny('go-first'))
-		lastChapterButton.connect('clicked', lambda w: self.seekChapter(-1))
+		lastChapterButton.connect('clicked', cmd(Control.seekChapter, -1))
 		dvdbox.attach(lastChapterButton, 0, 1, 0, 1)
 		nextChapterButton = gtk.Button()
 		nextChapterButton.add(self._loadIconTiny('go-last'))
-		nextChapterButton.connect('clicked', lambda w: self.seekChapter(1))
+		nextChapterButton.connect('clicked', cmd(Control.seekChapter, 1))
 		dvdbox.attach(nextChapterButton, 2, 3, 0, 1)
 
 		menuButton = gtk.Button()
 		menuButton.add(self._loadIconTiny('undo'))
-		menuButton.connect('clicked', lambda w: self.dvdControl('menu'))
+		menuButton.connect('clicked', cmd(Control.dvdControl, 'menu'))
 		dvdbox.attach(menuButton, 0, 1, 2, 3)
 		ejectButton = gtk.Button()
 		ejectButton.add(self._loadIconTiny('player_eject'))
@@ -154,10 +160,10 @@ class RootWindow(object):
 
 		languageBox = gtk.HBox(True)
 		subsButton = gtk.Button('Subtitles')
-		subsButton.connect('clicked', lambda w: self.cycleSubs())
+		subsButton.connect('clicked', cmd(Control.cycleSubs))
 		languageBox.pack_start(subsButton)
 		langButton = gtk.Button('Languages')
-		langButton.connect('clicked', lambda w: self.cycleLanguage())
+		langButton.connect('clicked', cmd(Control.cycleLanguage))
 		languageBox.pack_start(langButton)
 		controls.pack_start(languageBox)
 
@@ -190,9 +196,6 @@ class RootWindow(object):
 
 	def removeAll(self):
 		self.playlist.clear()
-
-	def selectDrive(self):
-		pass
 
 	def selectFile(self, root):
 		f = gtk.FileChooserDialog('Select File', None, gtk.FILE_CHOOSER_ACTION_OPEN, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK))
@@ -272,10 +275,6 @@ class RootWindow(object):
 			error.run()
 			error.destroy()
 
-	def pause(self, widget):
-		if self.player:
-			self.player.togglePause()
-
 	def seek(self, value):
 		if self.player:
 			duration = self.player.getDuration()
@@ -293,34 +292,6 @@ class RootWindow(object):
 			self.player.quit()
 			self._setScrubberEnabled(False)
 			self.player = None
-
-	def next(self, widget):
-		if self.player:
-			self.player.next()
-
-	def prev(self, widget):
-		if self.player:
-			self.player.prev()
-
-	def seekDelta(self, delta):
-		if self.player:
-			self.player.seekDelta(delta)
-
-	def cycleSubs(self):
-		if self.player:
-			self.player.cycleSubs()
-
-	def cycleLanguage(self):
-		if self.player:
-			self.player.cycleLanguage()
-
-	def dvdControl(self, control):
-		if self.player:
-			self.player.dvdControl(control)
-
-	def seekChapter(self, direction):
-		if self.player:
-			self.player.seekChapter(direction)
 
 	def eject(self):
 		try:
