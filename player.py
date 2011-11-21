@@ -227,6 +227,7 @@ class RootWindow(object):
 		ytWindow.connect('delete_event', lambda w,d: w.destroy())
 		ytWindow.set_default_response(gtk.RESPONSE_OK)
 		inputBox = gtk.Entry()
+		inputBox.set_activates_default(True)
 		ytWindow.vbox.pack_start(inputBox)
 		ytWindow.show_all()
 		response = ytWindow.run()
